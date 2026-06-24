@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Physical Data Asset Relationship Report</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:#ffffff; --bg-2:#f5f5f3; --bg-3:#eeede8;
+      --txt:#1a1a18; --txt-2:#5f5e5a; --txt-3:#888780;
+      --bdr:rgba(0,0,0,0.09); --bdr-2:rgba(0,0,0,0.16);
+      --accent:#534AB7; --accent-bg:#EEEDFE; --accent-t:#3C3489;
+      --teal:#1D9E75; --teal-bg:#E1F5EE; --teal-t:#085041;
+      --amber:#BA7517; --amber-bg:#FAEEDA; --amber-t:#633806;
+      --track:#e8e7e2; --r:8px; --rl:12px;
+    }
+    @media (prefers-color-scheme:dark) {
+      :root {
+        --bg:#1e1e1c; --bg-2:#2a2a28; --bg-3:#343431;
+        --txt:#f0ede8; --txt-2:#b4b2a9; --txt-3:#888780;
+        --bdr:rgba(255,255,255,0.09); --bdr-2:rgba(255,255,255,0.16);
+        --accent-bg:#26215C; --accent-t:#CECBF6;
+        --teal-bg:#04342C; --teal-t:#9FE1CB;
+        --amber-bg:#412402; --amber-t:#FAC775;
+        --track:#343431;
+      }
+    }
+
+    body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; font-size:14px; line-height:1.5; color:var(--txt); background:var(--bg-2); padding:20px; min-height:100vh; }
+
+    .w { max-width:1100px; margin:0 auto; background:var(--bg); border-radius:var(--rl); border:0.5px solid var(--bdr); overflow:hidden; }
+
+    /* Header */
+    .hdr { padding:20px 24px 16px; border-bottom:0.5px solid var(--bdr); display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+    .hdr h1 { font-size:17px; font-weight:500; color:var(--txt); }
+    .hdr p  { font-size:12px; color:var(--txt-2); margin-top:3px; max-width:560px; }
+    .tag { font-size:11px; font-weight:500; padding:3px 10px; border-radius:20px; background:var(--accent-bg); color:var(--accent-t); white-space:nowrap; align-self:center; }
+
+    /* Landing */
+    .landing { padding:64px 24px; display:flex; flex-direction:column; align-items:center; gap:20px; text-align:center; }
+    .landing-icon { font-size:40px; line-height:1; }
+    .landing h2 { font-size:18px; font-weight:500; color:var(--txt); }
+    .landing p  { font-size:13px; color:var(--txt-2); max-width:440px; line-height:1.7; }
+    .load-btn { font-size:14px; font-weight:500; padding:10px 28px; border-radius:var(--r); border:none; background:var(--accent); color:#fff; cursor:pointer; transition:opacity .15s; display:flex; align-items:center; gap:8px; }
+    .load-btn:hover { opacity:.88; }
+    .load-btn:disabled { opacity:.5; cursor:default; }
+    .scope-note { font-size:11px; color:var(--txt-3); }
+
+    /* Loading */
+    .loading-panel { padding:64px 24px; display:flex; flex-direction:column; align-items:center; gap:16px; text-align:center; }
+    .spinner { width:36px; height:36px; border:3px solid var(--bdr); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .load-label { font-size:14px; color:var(--txt-2); }
+    .load-sub   { font-size:12px; color:var(--txt-3); }
+    .prog-wrap  { width:280px; height:4px; background:var(--track); border-radius:2px; overflow:hidden; }
+    .prog-bar   { height:4px; background:var(--accent); border-radius:2px; width:0%; transition:width .3s ease; }
+
+    /* Error */
+    .error-panel  { padding:48px 24px; display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center; }
+    .error-icon   { font-size:32px; }
+    .error-label  { font-size:14px; color:var(--txt-2); font-weight:500; }
+    .error-detail { font-size:12px; color:var(--txt-3); max-width:480px; line-height:1.7; white-space:pre-wrap; }
+    .back-btn     { font-size:13px; padding:7px 18px; border-radius:var(--r); border:0.5px solid var(--bdr-2); background:var(--bg); color:var(--txt); cursor:pointer; }
+    .back-btn:hover { background:var(--bg-2); }
+
+    /* Metrics */
+    .metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; padding:16px 24px; border-bottom:0.5px solid var(--bdr); }
+    @media(max-width:640px){ .metrics { grid-template-columns:repeat(2,1fr); } }
+    .mc { background:var(--bg-2); border-radius:var(--r); padding:12px 14px; }
+    .mc-label { font-size:11px; color:var(--txt-2); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em; }
+    .mc-value { font-size:24px; font-weight:500; color:var(--txt); }
+    .mc-sub   { font-size:11px; color:var(--txt-2); margin-top:2px; }
+
+    /* Controls */
+    .controls { display:flex; gap:10px; padding:12px 24px; border-bottom:0.5px solid var(--bdr); flex-wrap:wrap; align-items:center; background:var(--bg-2); }
+    .sw { position:relative; flex:1; min-width:180px; }
+    .sw svg { position:absolute; left:9px; top:50%; transform:translateY(-50%); color:var(--txt-3); pointer-events:none; }
+    .controls input[type="text"] { width:100%; padding:7px 10px 7px 30px; font-size:13px; border:0.5px solid var(--bdr-2); border-radius:var(--r); background:var(--bg); color:var(--txt); outline:none; }
+    .controls input[type="text"]:focus { border-color:var(--accent); box-shadow:0 0 0 2px rgba(83,74,183,.15); }
+    .controls select { padding:7px 28px 7px 10px; font-size:13px; border:0.5px solid var(--bdr-2); border-radius:var(--r); background:var(--bg); color:var(--txt); outline:none; appearance:none; -webkit-appearance:none; cursor:pointer; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 8px center; }
+    .controls select:focus { border-color:var(--accent); }
+    .res-count { font-size:12px; color:var(--txt-2); white-space:nowrap; margin-left:auto; }
+
+    /* Table */
+    .tbl-wrap { padding:0 24px 8px; overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; font-size:13px; }
+    thead th { padding:8px 10px; text-align:left; font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.04em; color:var(--txt-2); border-bottom:0.5px solid var(--bdr); white-space:nowrap; user-select:none; }
+    thead th.sortable { cursor:pointer; }
+    thead th.sortable:hover { color:var(--txt); }
+    thead th .arr { display:inline-block; margin-left:4px; opacity:.3; font-size:10px; }
+    thead th.sort-asc .arr, thead th.sort-desc .arr { opacity:1; color:var(--accent); }
+    tbody tr { border-bottom:0.5px solid var(--bdr); transition:background .1s; }
+    tbody tr:last-child { border-bottom:none; }
+    tbody tr:hover { background:var(--bg-2); }
+    tbody td { padding:9px 10px; vertical-align:middle; }
+    .td-rank { font-size:11px; font-weight:500; color:var(--txt-3); width:36px; text-align:center; }
+    .td-name { font-weight:500; }
+    .td-name a { color:var(--txt); text-decoration:none; }
+    .td-name a:hover { color:var(--accent); text-decoration:underline; }
+    .td-domain, .td-type { font-size:12px; }
+    .badge { display:inline-block; font-size:10px; font-weight:500; padding:2px 7px; border-radius:4px; white-space:nowrap; }
+    .td-num { text-align:right; font-variant-numeric:tabular-nums; padding-right:16px; white-space:nowrap; }
+    .td-in  { color:var(--teal); }
+    .td-out { color:var(--amber); }
+    .td-tot { font-weight:500; color:var(--txt); }
+    .td-bar { width:80px; }
+    .bar-bg  { height:4px; background:var(--track); border-radius:2px; display:flex; overflow:hidden; }
+    .bar-in  { height:4px; background:var(--teal);  flex-shrink:0; }
+    .bar-out { height:4px; background:var(--amber); flex-shrink:0; }
+    .no-rows { text-align:center; padding:40px 0; color:var(--txt-2); font-size:14px; }
+
+    /* Pagination */
+    .pagination { display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 24px 4px; flex-wrap:wrap; }
+    .pg-btn  { font-size:12px; font-weight:500; padding:5px 14px; border-radius:var(--r); border:0.5px solid var(--bdr-2); background:var(--bg); color:var(--txt); cursor:pointer; }
+    .pg-btn:hover:not(:disabled) { background:var(--bg-2); }
+    .pg-btn:disabled { opacity:.4; cursor:default; }
+    .pg-info { font-size:12px; color:var(--txt-2); white-space:nowrap; }
+    .pg-jump { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--txt-2); }
+    .pg-jump input { width:48px; padding:4px 6px; font-size:12px; border:0.5px solid var(--bdr-2); border-radius:var(--r); background:var(--bg); color:var(--txt); text-align:center; outline:none; }
+    .pg-jump input:focus { border-color:var(--accent); }
+
+    /* Footer */
+    .footer { padding:12px 24px; border-top:0.5px solid var(--bdr); display:flex; gap:16px; flex-wrap:wrap; font-size:11px; color:var(--txt-2); background:var(--bg-2); align-items:center; }
+    .legend-item { display:flex; align-items:center; gap:5px; }
+    .dot { width:7px; height:7px; border-radius:50%; display:inline-block; flex-shrink:0; }
+    .ftr-link { font-size:11px; background:none; border:none; color:var(--accent); cursor:pointer; padding:0; text-decoration:underline; }
+
+    .hidden { display:none !important; }
+
+    /* ── Drill-down drawer ── */
+    .dd-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:200; }
+    .dd-panel { position:fixed; top:0; right:0; width:420px; max-width:95vw; height:100vh; background:var(--bg); border-left:0.5px solid var(--bdr-2); z-index:201; display:flex; flex-direction:column; transform:translateX(105%); transition:transform .25s cubic-bezier(.4,0,.2,1); box-shadow:-6px 0 32px rgba(0,0,0,.12); }
+    .dd-panel.dd-open { transform:translateX(0); }
+
+    .dd-hdr { padding:16px; border-bottom:0.5px solid var(--bdr); display:flex; align-items:flex-start; gap:10px; flex-shrink:0; }
+    .dd-hdr-info { flex:1; min-width:0; }
+    .dd-title { font-size:14px; font-weight:500; color:var(--txt); text-decoration:none; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .dd-title:hover { color:var(--accent); text-decoration:underline; }
+    .dd-badges { display:flex; gap:5px; margin-top:7px; flex-wrap:wrap; }
+    .dd-uuid { font-family:ui-monospace,monospace; font-size:10px; color:var(--txt-3); margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .dd-close { flex-shrink:0; width:28px; height:28px; border:0.5px solid var(--bdr-2); border-radius:6px; background:var(--bg-2); color:var(--txt-2); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:15px; line-height:1; }
+    .dd-close:hover { background:var(--bg-3); color:var(--txt); }
+
+    .dd-counts { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px 16px; border-bottom:0.5px solid var(--bdr); flex-shrink:0; }
+    .dd-count-card { border-radius:var(--r); padding:9px 12px; }
+    .dd-count-card.in  { background:var(--teal-bg); }
+    .dd-count-card.out { background:var(--amber-bg); }
+    .dd-count-n   { font-size:22px; font-weight:500; line-height:1.1; }
+    .in  .dd-count-n  { color:var(--teal-t);  }
+    .out .dd-count-n  { color:var(--amber-t); }
+    .dd-count-lbl { font-size:10px; text-transform:uppercase; letter-spacing:.05em; margin-top:2px; }
+    .in  .dd-count-lbl { color:var(--teal-t);  opacity:.65; }
+    .out .dd-count-lbl { color:var(--amber-t); opacity:.65; }
+
+    .dd-body { flex:1; overflow-y:auto; }
+    .dd-section { padding:0 16px; }
+    .dd-section + .dd-section { border-top:0.5px solid var(--bdr); }
+    .dd-sec-hdr { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; padding:12px 0 8px; display:flex; align-items:center; gap:6px; }
+    .dd-sec-hdr .dot { flex-shrink:0; }
+    .dd-in-hdr  { color:var(--teal-t);  }
+    .dd-out-hdr { color:var(--amber-t); }
+    .dd-in-hdr  .dot { background:var(--teal);  }
+    .dd-out-hdr .dot { background:var(--amber); }
+    .dd-rel { display:grid; grid-template-columns:minmax(60px,auto) 1fr auto; gap:8px; align-items:baseline; padding:7px 0; border-bottom:0.5px solid var(--bdr); }
+    .dd-rel:last-child { border-bottom:none; }
+    .dd-rel-role { font-size:10px; color:var(--txt-3); white-space:nowrap; padding-top:1px; }
+    .dd-rel-name a { font-size:12px; font-weight:500; color:var(--txt); text-decoration:none; word-break:break-word; }
+    .dd-rel-name a:hover { color:var(--accent); text-decoration:underline; }
+    .dd-empty { font-size:12px; color:var(--txt-3); padding:8px 0 14px; }
+
+    /* ── Row click affordance ── */
+    tbody tr { cursor:pointer; }
+    .td-bar { position:relative; width:80px; }
+    .row-chv { position:absolute; right:0; top:50%; transform:translateY(-50%); color:var(--txt-3); font-size:16px; opacity:0; transition:opacity .1s; pointer-events:none; line-height:1; }
+    tbody tr:hover .row-chv { opacity:1; color:var(--accent); }
+
+    /* ── Steward filter controls ── */
+    .my-assets-btn { font-size:11px; padding:5px 12px; border-radius:var(--r); border:0.5px solid var(--bdr-2); background:var(--bg); color:var(--txt-2); cursor:pointer; white-space:nowrap; transition:background .1s,color .1s,border-color .1s; flex-shrink:0; }
+    .my-assets-btn:hover:not(:disabled) { background:var(--bg-2); color:var(--txt); }
+    .my-assets-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+    .my-assets-btn:disabled { opacity:.4; cursor:default; }
+    .sw-steward { min-width:160px; }
+    .sw-steward input:disabled { opacity:.4; cursor:default; }
+
+    /* ── Steward display in drill-down ── */
+    .dd-stewards { display:flex; flex-wrap:wrap; gap:4px; margin-top:7px; min-height:18px; }
+    .dd-steward-badge { background:color-mix(in srgb,var(--accent) 12%,transparent); color:var(--accent); border:0.5px solid color-mix(in srgb,var(--accent) 30%,transparent); }
+    .dd-no-steward { font-size:11px; color:var(--txt-3); font-style:italic; padding-top:2px; }
+
+    /* ── Steward warning banner ── */
+    .steward-warn { font-size:12px; color:var(--amber-t); background:var(--amber-bg); border:0.5px solid color-mix(in srgb,var(--amber) 30%,transparent); border-radius:var(--r); padding:8px 14px; margin:0 0 8px; }
+    .steward-warn code { font-family:ui-monospace,monospace; font-size:11px; }
+    /* ── Info tooltips ── */
+    .ctrl-group { display:inline-flex; align-items:center; gap:4px; }
+    .info-tip { display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; border-radius:50%; border:0.5px solid var(--bdr-2); color:var(--txt-3); font-size:9px; cursor:default; position:relative; flex-shrink:0; line-height:1; }
+    .info-tip::after { content:attr(data-tip); position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%); background:var(--txt); color:var(--bg); font-size:11px; line-height:1.45; padding:7px 10px; border-radius:6px; width:220px; white-space:normal; pointer-events:none; opacity:0; transition:opacity .15s; z-index:300; box-shadow:0 2px 10px rgba(0,0,0,.18); }
+    .info-tip.tip-left::after { left:auto; right:0; transform:none; }
+    .info-tip:hover::after { opacity:1; }
+
+    .export-btn { font-size:11px; padding:4px 10px; border-radius:var(--r); border:0.5px solid var(--bdr-2); background:var(--bg); color:var(--txt-2); cursor:pointer; display:inline-flex; align-items:center; gap:4px; white-space:nowrap; transition:background .1s,color .1s; }
+    .export-btn:hover { background:var(--bg-2); color:var(--txt); }
+  </style>
+</head>
+<body>
+<div class="w">
+
+  <!-- Header — always visible -->
+  <div class="hdr">
+    <div>
+      <h1>Physical data asset relationship report</h1>
+      <p>Ranks Database, Schema, and Table assets by total first-order relationships — incoming and outgoing — to identify the most connected assets in your catalog.</p>
+    </div>
+    <span class="tag">Collibra Catalog</span>
+  </div>
+
+  <!-- LANDING -->
+  <div id="sLanding">
+    <div class="landing">
+      <div class="landing-icon">&#128196;</div>
+      <h2>Ready to load</h2>
+      <p>Click the button below to fetch all Database, Schema, and Table assets from your Collibra catalog and rank them by their first-order relationship count.</p>
+      <button class="load-btn" onclick="startLoad()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Load assets
+      </button>
+      <span class="scope-note">Scope: Database, Schema &amp; Table asset types &nbsp;·&nbsp; all domains &nbsp;·&nbsp; all relationships</span>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div id="sLoading" class="hidden">
+    <div class="loading-panel">
+      <div class="spinner"></div>
+      <div class="load-label" id="loadLabel">Connecting to Collibra…</div>
+      <div class="prog-wrap"><div class="prog-bar" id="progBar"></div></div>
+      <div class="load-sub" id="loadSub">Discovering Database, Schema, and Table assets</div>
+    </div>
+  </div>
+
+  <!-- ERROR -->
+  <div id="sError" class="hidden">
+    <div class="error-panel">
+      <div class="error-icon">&#9888;</div>
+      <div class="error-label" id="errLabel">Unable to load data</div>
+      <div class="error-detail" id="errDetail"></div>
+      <button class="back-btn" onclick="showLanding()">&#8592; Back</button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="sResults" class="hidden">
+
+    <div class="metrics" id="metricsRow"></div>
+
+    <div class="controls">
+      <div class="sw">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="searchBox" placeholder="Search name or UUID…" oninput="onFilter()" aria-label="Search" />
+      </div>
+      <select id="filterDomain" onchange="onFilter()" aria-label="Filter by domain"><option value="">All domains</option></select>
+      <select id="filterType"   onchange="onFilter()" aria-label="Filter by type">  <option value="">All asset types</option></select>
+      <div class="ctrl-group">
+        <button id="myAssetsBtn" class="my-assets-btn" onclick="toggleMyAssets()"
+                disabled aria-pressed="false"
+                title="Loading DataSteward assignments…">My assets</button>
+        <span class="info-tip tip-left" data-tip="Shows all assets where you are DataSteward — directly, via a group, or through community/domain inheritance. May return more assets than selecting your name in the steward dropdown, which matches only your personal user record.">i</span>
+      </div>
+      <div class="ctrl-group">
+        <select id="filterSteward" onchange="onFilter()" disabled aria-label="Filter by DataSteward">
+          <option value="">All stewards</option>
+        </select>
+        <span class="info-tip" data-tip="Filters by a specific person or group's direct assignment record. Selecting your own name will not include assets assigned to your groups — use the 'My assets' button for your full stewardship scope.">i</span>
+      </div>
+      <span class="res-count" id="resCount"></span>
+    </div>
+
+    <div id="stewardWarn" class="steward-warn hidden">
+      ⚠ DataSteward assignments could not be loaded — steward filters are unavailable.
+      Check that this account has permission to read <code>/rest/2.0/responsibilities</code>.
+    </div>
+
+    <div class="tbl-wrap">
+      <table aria-label="Physical data assets ranked by relationship count">
+        <thead>
+          <tr>
+            <th class="td-rank">#</th>
+            <th class="sortable" data-col="name"     onclick="onSort('name')"    >Name<span class="arr">↕</span></th>
+            <th class="sortable" data-col="domain"   onclick="onSort('domain')"  >Domain<span class="arr">↕</span></th>
+            <th class="sortable" data-col="assetType"onclick="onSort('assetType')">Type<span class="arr">↕</span></th>
+            <th class="sortable td-num td-in"  data-col="inCount"  onclick="onSort('inCount')" >Incoming<span class="arr">↕</span></th>
+            <th class="sortable td-num td-out" data-col="outCount" onclick="onSort('outCount')">Outgoing<span class="arr">↕</span></th>
+            <th class="sortable td-num td-tot" data-col="total"    onclick="onSort('total')"   >Total<span class="arr">↕</span></th>
+            <th class="td-bar"></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <button class="pg-btn" id="pgPrev" onclick="goPage(CUR_PAGE-1)">&#8592; Prev</button>
+      <span class="pg-info" id="pgInfo"></span>
+      <button class="pg-btn" id="pgNext" onclick="goPage(CUR_PAGE+1)">Next &#8594;</button>
+      <div class="pg-jump">Go to <input type="number" id="pgJump" min="1" onkeydown="if(event.key==='Enter')goPage(+this.value)" aria-label="Jump to page"/></div>
+    </div>
+
+    <div class="footer">
+      <div class="legend-item"><span class="dot" style="background:var(--teal);"></span>Incoming — other assets pointing to this one</div>
+      <div class="legend-item"><span class="dot" style="background:var(--amber);"></span>Outgoing — assets this one points to</div>
+      <div style="margin-left:auto;color:var(--txt-3);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span id="footerCount"></span> &bull; <span id="footerTs"></span>
+        &bull;
+        <button class="export-btn" onclick="exportJSON()" title="Export current filtered view as JSON — includes full relation detail">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          JSON
+        </button>
+        <button class="export-btn" onclick="exportCSV()" title="Export current filtered view as CSV — one row per asset, summary counts">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          CSV
+        </button>
+        &bull; <button class="ftr-link" onclick="showLanding()">New query</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   COLLIBRA — Physical Data Asset Relationship Report
+   ───────────────────────────────────────────────────────────────────────
+   TWO-PHASE LOAD STRATEGY
+   ──────────────────────────────────────────────────────────────────────
+   Phase 0 — CSRF token (non-fatal):
+     GET /rest/2.0/auth/sessions/current?include=csrfToken
+     Stored in case a future POST is needed; Phase 1 is GET-only
+     so a failure here does not abort the load.
+
+   Phase 1 — Discovery via GET /rest/2.0/assets?typeId=UUID:
+     Called three times — Database, Schema, Table — each paginated
+     with limit / offset. UUIDs confirmed against live instance:
+       TYPE_DATABASE = 00000000-0000-0000-0000-000000031006
+       TYPE_SCHEMA   = 00000000-0000-0000-0001-000400000002
+       TYPE_TABLE    = 00000000-0000-0000-0000-000000031007
+     Returns { total: N, results: [{id, name, displayName,
+               type:{id,name}, domain:{id,name}, ...}] }
+     Results are flat objects; no {resource:{...}} envelope.
+
+     WHY NOT POST /search?  Two confirmed bugs on this instance:
+       BUG 1 — Envelope mismatch: /search wraps items as
+               {resource:{id:..., ...}} — code was reading s.id
+               as undefined → GET /assets/undefined → error.
+       BUG 2 — Filter silently ignored: assetTypeFilter returned
+               all 462,712 assets regardless of type UUIDs, causing
+               ~463 discovery pages before Phase 2 even started.
+     Previously tried alternatives on this instance:
+       /rest/2.0/assets ?typeIds   → 400 (param not supported)
+       /rest/2.0/assets ?typeNames → ignored (returns ALL assets)
+       GET  /rest/2.0/search       → 405 (POST required)
+       POST /rest/2.0/search       → filter silently ignored (BUG 2)
+     typeId (singular) is the correct GET /assets parameter.
+
+   Phase 2 — Relations via GET /rest/2.0/relations:
+     Two parallel calls per asset:
+       GET /relations?targetId={id}&limit=1000  → incoming
+       GET /relations?sourceId={id}&limit=1000  → outgoing
+     Stub data from Phase 1 (name/type/domain) is reused — the
+     asset itself does NOT need to be re-fetched.
+     NOTE: GET /assets/{id}?includeIncomingRelations=true is NOT
+     a valid Collibra v2.0 parameter and always returns 0 relations.
+
+   Phase 3 — DataSteward responsibilities (non-fatal):
+     GET /responsibilities?roleId={ROLE_STEWARD}&limit=1000&offset=N
+     Paginated. Builds a Map of assetId → [{id, name}] stewards.
+     Also captures the current user from Phase 0 for "My assets".
+     Phase 3 is non-fatal — if the endpoint is unavailable or the
+     user lacks permission, steward filters are disabled gracefully.
+
+   Auth: credentials:'include' — inherits the logged-in session cookie.
+   Host: auto-detected from window.location.origin.
+   Override: ?collibraBase=https://your.instance.com
+   ═══════════════════════════════════════════════════════════════════════ */
+
+  const P    = new URLSearchParams(window.location.search);
+  const BASE = (P.get('collibraBase') || window.location.origin).replace(/\/$/, '');
+  const API  = BASE + '/rest/2.0';
+
+  /* Asset type UUIDs — confirmed against live bailine-fed instance */
+  const TYPE_DATABASE = '00000000-0000-0000-0000-000000031006';
+  const TYPE_SCHEMA   = '00000000-0000-0000-0001-000400000002';
+  const TYPE_TABLE    = '00000000-0000-0000-0000-000000031007';
+
+  /* Role UUID — DataSteward resource role (confirmed by user)
+     Note: there is also a global role with the same name but a different
+     UUID (00000000-0000-0000-0000-000000005028) — that one is NOT used. */
+  const ROLE_STEWARD  = 'c0e00000-0010-0010-0000-000000000000';
+
+  const PAGE_SIZE   = 25;   /* rows per page in the table                */
+  const BATCH_SIZE  = 10;   /* concurrent relation-detail fetches         */
+  const SEARCH_MAX  = 1000; /* max results per GET /assets page (API cap) */
+  const MAX_PAGES   = 500;  /* safety cap — prevents runaway pagination   */
+
+  /* ── Colour palette for domain badges ── */
+  const PAL = [
+    {bg:'#E1F5EE',text:'#085041'},{bg:'#FAEEDA',text:'#633806'},
+    {bg:'#EEEDFE',text:'#3C3489'},{bg:'#E6F1FB',text:'#0C447C'},
+    {bg:'#FBEAF0',text:'#4B1528'},{bg:'#FAECE7',text:'#4A1B0C'},
+    {bg:'#EAF3DE',text:'#27500A'},{bg:'#FCF0D3',text:'#6B3D00'},
+  ];
+  const domClr = {}; let ci = 0;
+  function clr(d) { if (!domClr[d]) domClr[d] = PAL[ci++ % PAL.length]; return domClr[d]; }
+
+  /* ── State ── */
+  let ALL_DATA     = [];
+  let VIEW_DATA    = [];
+  let SORT_COL     = 'total';
+  let SORT_DIR     = 'desc';
+  let CUR_PAGE     = 1;
+  let CURRENT_USER   = null;       // {id, name} from Phase 0 session call
+  let USER_GROUP_IDS = new Set();  // group UUIDs the current user belongs to
+  let STEWARD_MAP    = new Map();  // assetId → [{id, name}]
+  let ALL_STEWARDS   = [];         // [{id, name}] sorted — for datalist
+  let MY_ASSETS_ON   = false;      // "My assets" toggle state
+
+  /* ── Panel helpers ── */
+  function showOnly(id) {
+    closeDrillDown();
+    ['sLanding','sLoading','sError','sResults'].forEach(s =>
+      document.getElementById(s).classList.toggle('hidden', s !== id)
+    );
+  }
+  function showLanding() { showOnly('sLanding'); }
+
+  /* ── Progress ── */
+  function prog(pct, label, sub) {
+    if (pct   != null) document.getElementById('progBar').style.width   = Math.min(pct,100)+'%';
+    if (label != null) document.getElementById('loadLabel').textContent  = label;
+    if (sub   != null) document.getElementById('loadSub').textContent    = sub;
+  }
+
+  /* ── CSRF token state ──
+     Collibra protects POST endpoints (like /search) with a CSRF filter.
+     POST without a valid token returns 401 even with a good session
+     cookie — which is exactly the auth error we saw. The token is
+     obtained from an authenticated GET and echoed back on POSTs.        */
+  let CSRF_TOKEN = null;
+
+  /* Obtain a CSRF token. Confirmed against the live bailine-fed instance:
+     the token is returned ONLY when explicitly requested via the
+     ?include=csrfToken query parameter — without it the response body
+     is {} (empty). The matching CSRF cookie is HttpOnly (not readable
+     by JS), so this endpoint is the only way for the widget to learn
+     the token value.
+
+       GET /rest/2.0/auth/sessions/current?include=csrfToken
+       → { "csrfToken": "e354da4b-...-1ebd45cb342e" }
+
+     The returned value is sent in the X-CSRF-TOKEN header on POSTs;
+     the browser sends the matching HttpOnly cookie automatically, and
+     the two must match (a mismatch is the 403 we saw).                 */
+  async function initCsrf() {
+    /* CSRF token is only required for POST endpoints.
+       Phase 1 uses GET /assets so a failure here is non-fatal.     */
+    try {
+      const res = await fetch(API + '/auth/sessions/current?include=csrfToken', {
+        method:      'GET',
+        credentials: 'include',
+        headers:     { 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        const body = await res.json().catch(() => null);
+        CSRF_TOKEN = body?.csrfToken || null;
+      }
+    } catch (_) { /* non-fatal */ }
+  }
+
+  /* GET /rest/2.0/users/current — dedicated endpoint for the logged-in
+     user's profile.  /auth/sessions/current does NOT reliably return the
+     user object across Collibra versions, so we call this separately.
+     Also fetches group memberships so group-based steward assignments
+     work correctly with the "My assets" toggle.                         */
+  async function initCurrentUser() {
+    try {
+      const u = await apiFetch('/users/current');
+      if (u?.id) {
+        const name = u.fullName
+          || [u.firstName, u.lastName].filter(Boolean).join(' ')
+          || u.userName
+          || u.id;
+        CURRENT_USER = { id: u.id, name };
+        console.log('[Collibra Dashboard] Current user:', CURRENT_USER);
+
+        /* Fetch group memberships — needed because DataSteward may be
+           assigned to a UserGroup rather than an individual user.
+           Uses memberId param (Collibra REST API v2.0 standard).        */
+        try {
+          const grps = await apiFetch(
+            `/userGroups?memberId=${encodeURIComponent(u.id)}&limit=1000`
+          );
+          USER_GROUP_IDS = new Set((grps.results || []).map(g => g.id));
+          console.log('[Collibra Dashboard] User groups:', [...USER_GROUP_IDS]);
+        } catch (_) {
+          USER_GROUP_IDS = new Set();
+          console.warn('[Collibra Dashboard] Could not fetch user groups — group-based steward assignments will not be recognised');
+        }
+      }
+    } catch (_) {
+      /* non-fatal — "My assets" toggle will be disabled */
+      CURRENT_USER   = null;
+      USER_GROUP_IDS = new Set();
+    }
+  }
+
+  /* ── API helpers ──
+     GET by default. Pass a `body` object to issue a POST with JSON and
+     the CSRF token header. The widget is same-origin inside Collibra so
+     credentials:'include' carries the session cookie automatically.     */
+  async function apiFetch(path, body) {
+    const opts = {
+      method:      body ? 'POST' : 'GET',
+      credentials: 'include',
+      headers:     { 'Accept': 'application/json' }
+    };
+    if (body) {
+      opts.headers['Content-Type'] = 'application/json';
+      if (CSRF_TOKEN) opts.headers['X-CSRF-TOKEN'] = CSRF_TOKEN;
+      opts.body = JSON.stringify(body);
+    }
+    const res = await fetch(API + path, opts);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status} ${res.statusText}${txt ? '\n' + txt.slice(0,300) : ''}`);
+    }
+    return res.json();
+  }
+
+  /* Phase 1 — asset discovery via GET /rest/2.0/assets?typeId=UUID
+     ─────────────────────────────────────────────────────────────────
+     WHY GET /assets instead of POST /search:
+       POST /search with assetTypeFilter returns ALL asset types
+       (462 K+) regardless of the filter — the param is silently
+       ignored on this instance.  GET /assets?typeId=<single-uuid>
+       is the canonical per-type query and is reliably server-side
+       filtered.  We call it twice — once for Database, once for
+       Schema — then merge.
+
+     NOTE: `typeIds` (plural) → 400 on this instance; `typeId`
+     (singular) is the correct param for the /assets endpoint.
+
+     Response: { total: N, results: [{id, name, displayName,
+                 type:{id,name}, domain:{id,name}, ...}] }
+     Results are flat objects — no {resource:{...}} wrapper.           */
+  async function fetchAssetsByType(typeId, offset) {
+    return apiFetch(
+      `/assets?typeId=${encodeURIComponent(typeId)}&limit=${SEARCH_MAX}&offset=${offset}`
+    );
+  }
+
+  /* Phase 2 — relation queries via GET /rest/2.0/relations
+     ─────────────────────────────────────────────────────────────────
+     WHY NOT GET /assets/{id}?includeIncomingRelations=true:
+       Those query parameters are not part of the Collibra REST API
+       v2.0 assets endpoint.  The endpoint ignores them and returns
+       the base asset object only — incomingRelations /
+       outgoingRelations are always absent → always 0 relations.
+
+     The correct approach is the /relations endpoint:
+       GET /rest/2.0/relations?sourceId={id}&limit=1000
+         → relations where this asset is the SOURCE (outgoing)
+       GET /rest/2.0/relations?targetId={id}&limit=1000
+         → relations where this asset is the TARGET (incoming)
+
+     Both calls are made in parallel per asset. Response:
+       { total: N, results: [{id, source:{...}, target:{...},
+         type:{id, role, coRole, ...}}] }
+
+     The stub data from Phase 1 (name, type, domain) is already
+     complete — we do NOT need to re-fetch the asset itself.         */
+  async function fetchRelations(id) {
+    const enc = encodeURIComponent(id);
+    const [incPage, outPage] = await Promise.all([
+      apiFetch(`/relations?targetId=${enc}&limit=1000`),
+      apiFetch(`/relations?sourceId=${enc}&limit=1000`),
+    ]);
+    return {
+      incoming: incPage.results || [],
+      outgoing: outPage.results || [],
+    };
+  }
+
+  /* Phase 3 — DataSteward responsibilities
+     GET /rest/2.0/responsibilities?roleId={ROLE_STEWARD}&limit=1000&offset=N
+     owner can be a User or UserGroup — both are handled.              */
+  async function fetchResponsibilities(offset) {
+    return apiFetch(
+      `/responsibilities?roleId=${encodeURIComponent(ROLE_STEWARD)}&limit=${SEARCH_MAX}&offset=${offset}`
+    );
+  }
+
+  function stewardDisplayName(owner) {
+    if (!owner) return '(unknown)';
+    if (owner.fullName) return owner.fullName;
+    const parts = [owner.firstName, owner.lastName].filter(Boolean).join(' ');
+    return parts || owner.name || owner.userName || owner.id || '(unknown)';
+  }
+  function normalise(stub, { incoming, outgoing }) {
+    const inMapped = incoming.map(r => ({
+      id:   r.source?.id   || '',
+      name: r.source?.displayName || r.source?.name || '(unknown)',
+      type: r.source?.type?.name  || 'Asset',
+      role: r.type?.role   || r.type?.coRole || '',
+    }));
+    const outMapped = outgoing.map(r => ({
+      id:   r.target?.id   || '',
+      name: r.target?.displayName || r.target?.name || '(unknown)',
+      type: r.target?.type?.name  || 'Asset',
+      role: r.type?.role   || r.type?.coRole || '',
+    }));
+    return {
+      id:        stub.id,
+      name:      stub.displayName || stub.name || stub.id,
+      uuid:      stub.id,
+      domain:    stub.domain?.name   || 'Unknown',
+      domainId:  stub.domain?.id     || null,   /* needed for domain-level steward fan-out */
+      assetType: stub.type?.name     || 'Asset',
+      link:      `${BASE}/asset/${stub.id}`,
+      incoming:  inMapped,
+      outgoing:  outMapped,
+      inCount:   inMapped.length,
+      outCount:  outMapped.length,
+      total:     inMapped.length + outMapped.length,
+      stewards:  [],   /* populated in Phase 3 */
+    };
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     MAIN LOAD
+     ═══════════════════════════════════════════════════════════════════ */
+
+  async function startLoad() {
+    showOnly('sLoading');
+    prog(0, 'Connecting to Collibra…', 'Establishing session');
+    ALL_DATA = []; VIEW_DATA = []; CUR_PAGE = 1;
+
+    try {
+      /* ── Phase 0: session token + current user identity ── */
+      await initCsrf();
+      await initCurrentUser();
+
+      /* ── Phase 1: collect all asset IDs via GET /assets?typeId ── */
+      const stubs   = [];
+      const typeIds = [TYPE_DATABASE, TYPE_SCHEMA, TYPE_TABLE];
+
+      for (const typeId of typeIds) {
+        let offset    = 0;
+        let typeTotal = Infinity;
+        let pages     = 0;
+
+        while (offset < typeTotal && pages < MAX_PAGES) {
+          const page = await fetchAssetsByType(typeId, offset);
+          typeTotal  = page.total ?? 0;
+
+          /* Defensive: unwrap {resource:{...}} envelope if present
+             (GET /assets returns flat objects, but guard just in case) */
+          const items = (page.results || []).map(r => r.resource ?? r);
+          if (items.length === 0) break;
+
+          stubs.push(...items);
+          offset += items.length;
+          pages++;
+
+          prog(
+            Math.round((stubs.length / Math.max(typeTotal * typeIds.length, 1)) * 30),
+            `Found ${stubs.length.toLocaleString()} asset${stubs.length !== 1 ? 's' : ''}…`,
+            'Discovering Database, Schema, and Table assets'
+          );
+        }
+      }
+
+      if (stubs.length === 0) {
+        throw new Error(
+          'No Database, Schema, or Table assets were found in this Collibra instance.\n\n' +
+          'Ensure the current user has permission to view these asset types and ' +
+          'that Database, Schema, or Table assets have been registered.'
+        );
+      }
+
+      /* ── Phase 2: fetch relations in parallel batches ── */
+      prog(30, `Loading relationships for ${stubs.length} assets…`,
+        'Querying /relations?sourceId and /relations?targetId per asset');
+
+      const enriched = [];
+      for (let i = 0; i < stubs.length; i += BATCH_SIZE) {
+        const batch    = stubs.slice(i, i + BATCH_SIZE);
+        /* Each slot fires 2 concurrent requests (incoming + outgoing).
+           BATCH_SIZE=10 → up to 20 in-flight at once.                */
+        const relsList = await Promise.all(
+          batch.map(s => fetchRelations(s.id).catch(() => ({ incoming: [], outgoing: [] })))
+        );
+        relsList.forEach((rels, idx) => enriched.push(normalise(batch[idx], rels)));
+
+        const done = Math.min(i + BATCH_SIZE, stubs.length);
+        prog(
+          30 + Math.round((done / stubs.length) * 58),   /* 30 → 88 */
+          `Loading relationships… ${done.toLocaleString()} of ${stubs.length.toLocaleString()}`,
+          'Fetching incoming and outgoing relationships'
+        );
+      }
+
+      if (enriched.length === 0) {
+        throw new Error('Assets were found but relationship data could not be retrieved.');
+      }
+
+      ALL_DATA = enriched.sort((a,b) => b.total - a.total);
+
+      /* ── Index: domainId → Set<assetId> (used by Phase 3 fan-out) ──
+         Responsibilities can be assigned at Asset, Domain, or Community
+         level. When assigned at Domain level the resource.id is a domain
+         UUID, not an asset UUID, so we need this index to resolve which
+         assets live in that domain.                                      */
+      const domainToAssets = new Map();
+      for (const a of ALL_DATA) {
+        if (!a.domainId) continue;
+        if (!domainToAssets.has(a.domainId)) domainToAssets.set(a.domainId, new Set());
+        domainToAssets.get(a.domainId).add(a.id);
+      }
+
+      /* ── Phase 3: DataSteward responsibilities (non-fatal) ── */
+      prog(88, 'Loading DataSteward assignments…',
+        `GET /responsibilities?roleId=${ROLE_STEWARD}`);
+
+      STEWARD_MAP  = new Map();
+      ALL_STEWARDS = [];
+      MY_ASSETS_ON = false;
+
+      try {
+        /* ── Community→assets index ──────────────────────────────────────
+           Community-level responsibilities must fan out only to assets
+           within that community, not to all assets. We resolve this by
+           fetching each unique domain's parent community in parallel,
+           then building communityId → Set<assetId>.                    */
+        const communityToAssets = new Map();
+        const uniqueDomainIds   = [...domainToAssets.keys()];
+
+        for (let di = 0; di < uniqueDomainIds.length; di += BATCH_SIZE) {
+          const dBatch = uniqueDomainIds.slice(di, di + BATCH_SIZE);
+          const dResults = await Promise.all(
+            dBatch.map(async domainId => {
+              try {
+                const d = await apiFetch(`/domains/${encodeURIComponent(domainId)}`);
+                return { domainId, communityId: d.community?.id || null };
+              } catch (_) {
+                return { domainId, communityId: null };
+              }
+            })
+          );
+          for (const { domainId, communityId } of dResults) {
+            if (!communityId) continue;
+            if (!communityToAssets.has(communityId)) communityToAssets.set(communityId, new Set());
+            const assetIds = domainToAssets.get(domainId) || new Set();
+            for (const assetId of assetIds) communityToAssets.get(communityId).add(assetId);
+          }
+        }
+        console.log('[Collibra Dashboard] Phase 3 — community index:', communityToAssets.size, 'communities');
+
+        let respOffset = 0;
+        let respTotal  = Infinity;
+        let respPages  = 0;
+
+        while (respOffset < respTotal && respPages < MAX_PAGES) {
+          const page  = await fetchResponsibilities(respOffset);
+          respTotal   = page.total ?? 0;
+          const items = page.results || [];
+
+          /* Log first page so DevTools shows exactly what the API returned */
+          if (respPages === 0) {
+            console.log('[Collibra Dashboard] Phase 3 — responsibilities response:', {
+              roleId:      ROLE_STEWARD,
+              total:       page.total,
+              resultCount: items.length,
+              sample:      items.slice(0, 3),
+            });
+          }
+
+          if (!items.length) break;
+
+          for (const r of items) {
+            const rType = r.baseResource?.resourceType;  /* 'Asset'|'Domain'|'Community' */
+            const rId   = r.baseResource?.id;
+            const owner = r.owner;
+            if (!rType || !rId || !owner?.id) continue;
+
+            /* Store id + resourceType now; name resolved in batch after loop */
+            const steward = { id: owner.id, name: null, resourceType: owner.resourceType };
+
+            let targetIds;
+            if (rType === 'Asset') {
+              targetIds = [rId];
+            } else if (rType === 'Domain') {
+              targetIds = [...(domainToAssets.get(rId) || [])];
+            } else if (rType === 'Community') {
+              targetIds = [...(communityToAssets.get(rId) || new Set())];
+            } else {
+              continue;
+            }
+
+            for (const assetId of targetIds) {
+              if (!STEWARD_MAP.has(assetId)) STEWARD_MAP.set(assetId, []);
+              if (!STEWARD_MAP.get(assetId).some(s => s.id === steward.id)) {
+                STEWARD_MAP.get(assetId).push(steward);
+              }
+            }
+          }
+
+          respOffset += items.length;
+          respPages++;
+          prog(
+            88 + Math.round((respOffset / Math.max(respTotal, 1)) * 11),  /* 88 → 99 */
+            `Loading DataSteward assignments… ${respOffset.toLocaleString()} of ${respTotal.toLocaleString()}`,
+            'Fetching DataSteward responsibilities'
+          );
+        }
+
+        /* ── Name resolution pass ──────────────────────────────────────
+           The /responsibilities endpoint returns owner with id +
+           resourceType only — no name fields. Batch-fetch display names
+           for every unique owner (User or UserGroup) now.              */
+        const uniqueOwners = new Map(); /* id → resourceType */
+        for (const stewards of STEWARD_MAP.values()) {
+          for (const s of stewards) {
+            if (!uniqueOwners.has(s.id)) uniqueOwners.set(s.id, s.resourceType);
+          }
+        }
+
+        const nameMap  = new Map();
+        const ownerArr = [...uniqueOwners.entries()];
+        for (let oi = 0; oi < ownerArr.length; oi += BATCH_SIZE) {
+          const batch = ownerArr.slice(oi, oi + BATCH_SIZE);
+          const resolved = await Promise.all(
+            batch.map(async ([id, type]) => {
+              try {
+                const enc  = encodeURIComponent;
+                const path = type === 'UserGroup'
+                  ? `/userGroups/${enc(id)}`
+                  : `/users/${enc(id)}`;
+                const d = await apiFetch(path);
+                const name = d.fullName
+                  || d.name   /* UserGroup uses .name */
+                  || [d.firstName, d.lastName].filter(Boolean).join(' ')
+                  || d.userName
+                  || id;
+                return [id, name];
+              } catch (_) {
+                return [id, id]; /* fall back to UUID */
+              }
+            })
+          );
+          for (const [id, name] of resolved) nameMap.set(id, name);
+        }
+
+        /* Apply resolved names to every steward entry in the map */
+        for (const stewards of STEWARD_MAP.values()) {
+          for (const s of stewards) s.name = nameMap.get(s.id) || s.id;
+        }
+
+        console.log('[Collibra Dashboard] Phase 3 — steward map size:', STEWARD_MAP.size,
+          '| unique owners resolved:', nameMap.size);
+        ALL_DATA.forEach(a => { a.stewards = STEWARD_MAP.get(a.id) || []; });
+
+        /* Build sorted unique steward list for the select */
+        const stewardSeen = new Map();
+        for (const arr of STEWARD_MAP.values()) {
+          for (const s of arr) stewardSeen.set(s.id, s.name);
+        }
+        ALL_STEWARDS = [...stewardSeen.entries()]
+          .map(([id, name]) => ({ id, name }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        /* Populate steward select using createElement — avoids browser
+           quirk where setting innerHTML on a disabled select can cause
+           the element to be internally re-created, silently detaching
+           any previously registered event listeners.                  */
+        const sfld = document.getElementById('filterSteward');
+        while (sfld.options.length > 1) sfld.remove(1); /* keep "All stewards" */
+        for (const s of ALL_STEWARDS) {
+          const opt = document.createElement('option');
+          opt.value       = s.id;
+          opt.textContent = s.name;
+          sfld.appendChild(opt);
+        }
+        sfld.disabled = (ALL_STEWARDS.length === 0);
+        /* Direct listeners — belt + suspenders */
+        sfld.addEventListener('change', onFilter);
+        sfld.addEventListener('input',  onFilter);
+
+        /* Enable My assets button */
+        const myBtn = document.getElementById('myAssetsBtn');
+        myBtn.disabled = !CURRENT_USER;
+        myBtn.title    = CURRENT_USER
+          ? `Show only assets where you (${CURRENT_USER.name}) are DataSteward`
+          : 'Your identity could not be detected — sign into Collibra and reload';
+
+      } catch (stewardErr) {
+        /* Non-fatal — steward filters remain disabled */
+        console.warn('[Collibra Dashboard] Phase 3 (responsibilities) failed:', stewardErr);
+        document.getElementById('stewardWarn').classList.remove('hidden');
+      }
+      prog(100, 'Done!', '');
+      populateFilters();
+      applyFilterSort();
+      renderMetrics();
+
+      document.getElementById('footerTs').textContent =
+        'Loaded ' + new Date().toLocaleString(undefined, {dateStyle:'medium', timeStyle:'short'});
+      document.getElementById('footerCount').textContent =
+        ALL_DATA.length.toLocaleString() + ' asset' + (ALL_DATA.length !== 1 ? 's' : '');
+
+      showOnly('sResults');
+
+    } catch (err) {
+      console.error('[Collibra Dashboard]', err);
+      showOnly('sError');
+      const isAuth = err.message.includes('401') || err.message.includes('403');
+      document.getElementById('errLabel').textContent  =
+        isAuth ? 'Authentication error' : 'Unable to load data';
+      document.getElementById('errDetail').textContent =
+        isAuth
+          ? 'Your session may have expired. Reload the Collibra page and try again.'
+          : err.message;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     FILTERS
+     ═══════════════════════════════════════════════════════════════════ */
+
+  function populateFilters() {
+    function fill(id, vals) {
+      const el = document.getElementById(id);
+      const first = el.options[0].outerHTML;
+      el.innerHTML = first;
+      [...vals].sort().forEach(v => {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = v; el.appendChild(o);
+      });
+    }
+    fill('filterDomain', new Set(ALL_DATA.map(a => a.domain)));
+    fill('filterType',   new Set(ALL_DATA.map(a => a.assetType)));
+  }
+
+  function onFilter() {
+    CUR_PAGE = 1;
+    const sid = document.getElementById('filterSteward')?.value;
+    if (sid) console.log('[Collibra Dashboard] onFilter — stewardId:', sid);
+    applyFilterSort();
+  }
+
+  function applyFilterSort() {
+    const q        = document.getElementById('searchBox').value.toLowerCase();
+    const domain   = document.getElementById('filterDomain').value;
+    const type     = document.getElementById('filterType').value;
+    const stewardId = document.getElementById('filterSteward')?.value || '';
+
+    let arr = ALL_DATA.filter(a => {
+      if (q        && !a.name.toLowerCase().includes(q) && !a.uuid.toLowerCase().includes(q)) return false;
+      if (domain   && a.domain    !== domain)   return false;
+      if (type     && a.assetType !== type)     return false;
+      /* "My assets" toggle — match if the current user is a direct steward
+         OR is a member of a group that is a steward (group assignments) */
+      if (MY_ASSETS_ON && CURRENT_USER) {
+        const matches = a.stewards.some(s =>
+          s.id === CURRENT_USER.id || USER_GROUP_IDS.has(s.id)
+        );
+        if (!matches) return false;
+      }
+      /* Steward select filter — match by steward ID (exact, reliable) */
+      if (stewardId && !a.stewards.some(s => s.id === stewardId)) return false;
+      return true;
+    });
+
+    arr.sort((a,b) => {
+      let va = a[SORT_COL], vb = b[SORT_COL];
+      if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+      if (va < vb) return SORT_DIR === 'asc' ? -1 :  1;
+      if (va > vb) return SORT_DIR === 'asc' ?  1 : -1;
+      return 0;
+    });
+
+    VIEW_DATA = arr;
+    console.log('[Collibra Dashboard] applyFilterSort — result:', arr.length, '/ stewardId:', stewardId || '(none)', '/ myAssets:', MY_ASSETS_ON);
+    document.getElementById('resCount').textContent =
+      arr.length.toLocaleString() + ' result' + (arr.length !== 1 ? 's' : '');
+    updateSortHeaders();
+    renderPage();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     SORT
+     ═══════════════════════════════════════════════════════════════════ */
+
+  function onSort(col) {
+    SORT_DIR = (SORT_COL === col && SORT_DIR === 'desc') ? 'asc' : 'desc';
+    if (['name','domain','assetType'].includes(col) && SORT_COL !== col) SORT_DIR = 'asc';
+    SORT_COL = col;
+    CUR_PAGE = 1;
+    applyFilterSort();
+  }
+
+  function toggleMyAssets() {
+    MY_ASSETS_ON = !MY_ASSETS_ON;
+    const btn = document.getElementById('myAssetsBtn');
+    btn.classList.toggle('active', MY_ASSETS_ON);
+    btn.setAttribute('aria-pressed', MY_ASSETS_ON);
+    /* Reset steward select when toggling My assets */
+    const si = document.getElementById('filterSteward');
+    if (MY_ASSETS_ON && si) si.value = '';
+
+    if (MY_ASSETS_ON) {
+      const sampleAsset = ALL_DATA.find(a => a.stewards.length > 0);
+      console.log('[Collibra Dashboard] My assets ON —', {
+        currentUserId:  CURRENT_USER?.id,
+        userGroupIds:   [...USER_GROUP_IDS],
+        stewardMapSize: STEWARD_MAP.size,
+        sampleStewards: sampleAsset?.stewards.slice(0, 3),
+      });
+    }
+
+    CUR_PAGE = 1;
+    applyFilterSort();
+
+    /* If My assets is ON and result is empty, show a specific message */
+    if (MY_ASSETS_ON && VIEW_DATA.length === 0) {
+      document.querySelector('#tbl tbody').innerHTML =
+        `<tr><td colspan="8" class="no-rows">
+          No DataSteward assignments found for your account
+          (${CURRENT_USER?.name || 'unknown user'}) among the loaded
+          Database, Schema, and Table assets.
+          Check that assignments have been made at the asset or domain level.
+        </td></tr>`;
+    }
+  }
+
+  function updateSortHeaders() {
+    document.querySelectorAll('thead th[data-col]').forEach(th => {
+      const col = th.dataset.col;
+      th.classList.remove('sort-asc','sort-desc');
+      const a = th.querySelector('.arr');
+      if (col === SORT_COL) {
+        th.classList.add(SORT_DIR === 'asc' ? 'sort-asc' : 'sort-desc');
+        if (a) a.textContent = SORT_DIR === 'asc' ? '↑' : '↓';
+      } else {
+        if (a) a.textContent = '↕';
+      }
+    });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     PAGINATION
+     ═══════════════════════════════════════════════════════════════════ */
+
+  function goPage(n) {
+    const max = Math.max(1, Math.ceil(VIEW_DATA.length / PAGE_SIZE));
+    CUR_PAGE  = Math.max(1, Math.min(n, max));
+    renderPage();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     RENDER TABLE PAGE
+     ═══════════════════════════════════════════════════════════════════ */
+
+  function renderPage() {
+    const tbody   = document.getElementById('tableBody');
+    const total   = VIEW_DATA.length;
+    const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    CUR_PAGE      = Math.min(CUR_PAGE, maxPage);
+    const start   = (CUR_PAGE - 1) * PAGE_SIZE;
+    const slice   = VIEW_DATA.slice(start, start + PAGE_SIZE);
+    const maxTot  = VIEW_DATA.length ? Math.max(...VIEW_DATA.map(a => a.total), 1) : 1;
+
+    if (!slice.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="no-rows">No assets match your search or filters.</td></tr>`;
+    } else {
+      tbody.innerHTML = slice.map((a, i) => {
+        const rank   = start + i + 1;
+        const dc     = clr(a.domain);
+        const inPct  = Math.round((a.inCount  / maxTot) * 100);
+        const outPct = Math.round((a.outCount / maxTot) * 100);
+        return `<tr data-id="${esc(a.id)}" onclick="openDrillDown('${esc(a.id)}')">
+          <td class="td-rank">${rank}</td>
+          <td class="td-name"><a href="${esc(a.link)}" target="_blank" rel="noopener noreferrer" title="Open in Collibra" onclick="event.stopPropagation()">${esc(a.name)}</a></td>
+          <td class="td-domain"><span class="badge" style="background:${dc.bg};color:${dc.text};">${esc(a.domain)}</span></td>
+          <td class="td-type"><span class="badge" style="background:var(--bg-3);color:var(--txt-2);">${esc(a.assetType)}</span></td>
+          <td class="td-num td-in">${a.inCount.toLocaleString()}</td>
+          <td class="td-num td-out">${a.outCount.toLocaleString()}</td>
+          <td class="td-num td-tot">${a.total.toLocaleString()}</td>
+          <td class="td-bar"><div class="bar-bg"><div class="bar-in" style="width:${inPct}%"></div><div class="bar-out" style="width:${Math.min(outPct,100-inPct)}%"></div></div><span class="row-chv" aria-hidden="true">›</span></td>
+        </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('pgPrev').disabled = CUR_PAGE <= 1;
+    document.getElementById('pgNext').disabled = CUR_PAGE >= maxPage;
+    document.getElementById('pgInfo').textContent =
+      `Page ${CUR_PAGE} of ${maxPage}  (${total.toLocaleString()} result${total!==1?'s':''})`;
+    const ji = document.getElementById('pgJump');
+    ji.value = CUR_PAGE; ji.max = maxPage;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     METRICS
+     ═══════════════════════════════════════════════════════════════════ */
+
+  function renderMetrics() {
+    const tot        = ALL_DATA.reduce((s,a) => s+a.total, 0);
+    const maxR       = ALL_DATA.length ? Math.max(...ALL_DATA.map(a=>a.total)) : 0;
+    const topA       = ALL_DATA.find(a => a.total === maxR);
+    const avg        = ALL_DATA.length ? (tot / ALL_DATA.length).toFixed(1) : '0';
+    const withSteward = ALL_DATA.filter(a => a.stewards.length > 0).length;
+    const stewardPct  = ALL_DATA.length ? Math.round((withSteward / ALL_DATA.length) * 100) : 0;
+    document.getElementById('metricsRow').innerHTML = `
+      <div class="mc"><div class="mc-label">Assets loaded</div><div class="mc-value">${ALL_DATA.length.toLocaleString()}</div><div class="mc-sub">Database, Schema &amp; Table types</div></div>
+      <div class="mc"><div class="mc-label">Total relationships</div><div class="mc-value">${tot.toLocaleString()}</div><div class="mc-sub">incoming + outgoing</div></div>
+      <div class="mc"><div class="mc-label">Avg relationships</div><div class="mc-value">${avg}</div><div class="mc-sub">per asset</div></div>
+      <div class="mc"><div class="mc-label">DataSteward coverage</div><div class="mc-value">${stewardPct}%</div><div class="mc-sub">${withSteward.toLocaleString()} of ${ALL_DATA.length.toLocaleString()} assets</div></div>
+      <div class="mc"><div class="mc-label">Most connected</div><div class="mc-value" style="font-size:13px;margin-top:4px;">${topA?topA.name.slice(0,22)+(topA.name.length>22?'…':''):'—'}<div class="mc-sub">${maxR} relationships</div></div></div>`;
+  }
+
+  /* ── Helpers ── */
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     DRILL-DOWN PANEL
+     ═══════════════════════════════════════════════════════════════════ */
+
+  function openDrillDown(id) {
+    const a = ALL_DATA.find(x => x.id === id);
+    if (!a) return;
+
+    const dc = clr(a.domain);
+
+    /* Header */
+    const nameEl = document.getElementById('ddName');
+    nameEl.textContent = a.name;
+    nameEl.href        = a.link;
+
+    const typeEl = document.getElementById('ddTypeBadge');
+    typeEl.textContent = a.assetType;
+
+    const domEl = document.getElementById('ddDomainBadge');
+    domEl.textContent        = a.domain;
+    domEl.style.background   = dc.bg;
+    domEl.style.color        = dc.text;
+
+    document.getElementById('ddUuid').textContent = a.uuid;
+
+    /* Stewards */
+    const stewardEl = document.getElementById('ddStewards');
+    if (a.stewards.length) {
+      stewardEl.innerHTML = a.stewards.map(s =>
+        `<span class="badge dd-steward-badge">${esc(s.name)}</span>`
+      ).join('');
+    } else {
+      stewardEl.innerHTML = '<span class="dd-no-steward">No DataSteward assigned</span>';
+    }
+
+    /* Counts */
+    document.getElementById('ddInN').textContent  = a.inCount.toLocaleString();
+    document.getElementById('ddOutN').textContent = a.outCount.toLocaleString();
+
+    /* Relation lists */
+    function relHTML(rels, dir) {
+      if (!rels.length) return '<div class="dd-empty">No ' + dir + ' relationships</div>';
+      return rels.map(r => `
+        <div class="dd-rel">
+          <span class="dd-rel-role">${esc(r.role || '—')}</span>
+          <span class="dd-rel-name"><a href="${esc(BASE + '/asset/' + r.id)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${esc(r.name)}</a></span>
+          <span><span class="badge" style="background:var(--bg-3);color:var(--txt-2);">${esc(r.type)}</span></span>
+        </div>`).join('');
+    }
+    document.getElementById('ddInList').innerHTML  = relHTML(a.incoming, 'incoming');
+    document.getElementById('ddOutList').innerHTML = relHTML(a.outgoing, 'outgoing');
+
+    /* Open */
+    document.getElementById('ddOverlay').classList.remove('hidden');
+    document.getElementById('ddPanel').classList.add('dd-open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeDrillDown() {
+    const panel = document.getElementById('ddPanel');
+    if (!panel) return;
+    panel.classList.remove('dd-open');
+    document.getElementById('ddOverlay').classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  /* Close on ESC */
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrillDown(); });
+
+  /* Document-level delegation for the steward select — guaranteed to fire
+     even if the element-level listeners are silently dropped by the browser
+     when options are dynamically injected into a previously-disabled select */
+  document.addEventListener('change', e => {
+    if (e.target?.id === 'filterSteward') {
+      console.log('[Collibra Dashboard] Doc-level steward change:', e.target.value);
+      onFilter();
+    }
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════
+     EXPORT
+     Exports respect the current filtered + sorted VIEW_DATA.
+     JSON — full, with embedded relation arrays.
+     CSV  — flat summary, one row per asset (best for spreadsheets).
+     ═══════════════════════════════════════════════════════════════════ */
+
+  function exportJSON() {
+    if (!VIEW_DATA.length) return;
+    const payload = VIEW_DATA.map((a, i) => ({
+      rank:      i + 1,
+      id:        a.id,
+      name:      a.name,
+      assetType: a.assetType,
+      domain:    a.domain,
+      inCount:   a.inCount,
+      outCount:  a.outCount,
+      total:     a.total,
+      link:      a.link,
+      stewards:  a.stewards,
+      incoming:  a.incoming,
+      outgoing:  a.outgoing,
+    }));
+    const meta = {
+      exportedAt:   new Date().toISOString(),
+      totalAssets:  ALL_DATA.length,
+      filteredCount: VIEW_DATA.length,
+      assets: payload,
+    };
+    dlBlob(
+      new Blob([JSON.stringify(meta, null, 2)], { type: 'application/json' }),
+      `collibra-assets-${datestamp()}.json`
+    );
+  }
+
+  function exportCSV() {
+    if (!VIEW_DATA.length) return;
+    const HEADERS = ['Rank','Name','Asset Type','Domain','Incoming','Outgoing','Total','DataStewards','UUID','Link'];
+    const rows = VIEW_DATA.map((a, i) => [
+      i + 1, a.name, a.assetType, a.domain,
+      a.inCount, a.outCount, a.total,
+      a.stewards.map(s => s.name).join('; '),
+      a.uuid, a.link,
+    ]);
+    const csv = [HEADERS, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
+    dlBlob(
+      new Blob([csv], { type: 'text/csv;charset=utf-8;' }),
+      `collibra-assets-${datestamp()}.csv`
+    );
+  }
+
+  function csvCell(v) {
+    const s = String(v ?? '');
+    return /[,"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  function dlBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a   = Object.assign(document.createElement('a'), { href: url, download: filename });
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function datestamp() {
+    return new Date().toISOString().slice(0, 10);
+  }
+</script>
+<!-- DRILL-DOWN OVERLAY -->
+<div id="ddOverlay" class="dd-overlay hidden" onclick="closeDrillDown()"></div>
+
+<!-- DRILL-DOWN PANEL -->
+<div id="ddPanel" class="dd-panel" role="dialog" aria-modal="true" aria-label="Asset detail">
+  <div class="dd-hdr">
+    <div class="dd-hdr-info">
+      <a id="ddName" href="#" target="_blank" rel="noopener noreferrer" class="dd-title">—</a>
+      <div class="dd-badges">
+        <span id="ddTypeBadge"   class="badge" style="background:var(--bg-3);color:var(--txt-2);">—</span>
+        <span id="ddDomainBadge" class="badge">—</span>
+      </div>
+      <div class="dd-uuid" id="ddUuid">—</div>
+      <div class="dd-stewards" id="ddStewards"></div>
+    </div>
+    <button class="dd-close" onclick="closeDrillDown()" aria-label="Close detail panel">✕</button>
+  </div>
+  <div class="dd-counts">
+    <div class="dd-count-card in">
+      <div class="dd-count-n" id="ddInN">0</div>
+      <div class="dd-count-lbl">Incoming</div>
+    </div>
+    <div class="dd-count-card out">
+      <div class="dd-count-n" id="ddOutN">0</div>
+      <div class="dd-count-lbl">Outgoing</div>
+    </div>
+  </div>
+  <div class="dd-body">
+    <div class="dd-section">
+      <div class="dd-sec-hdr dd-in-hdr"><span class="dot" style="width:6px;height:6px;border-radius:50%;display:inline-block;"></span>Incoming relationships</div>
+      <div id="ddInList"></div>
+    </div>
+    <div class="dd-section">
+      <div class="dd-sec-hdr dd-out-hdr"><span class="dot" style="width:6px;height:6px;border-radius:50%;display:inline-block;"></span>Outgoing relationships</div>
+      <div id="ddOutList"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
