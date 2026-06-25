@@ -44,8 +44,10 @@ Because it is a single self-contained HTML file with no build step and no extern
 
 ### Recommended deployment — Collibra DGC customisation
 
-> 🎬 **[Video walkthrough — coming soon]**  
-> A step-by-step video showing how to register this dashboard as a DGC customisation and surface it as a native dashboard page is being published alongside this repository. The link will be updated here once available.
+> 🎬 **Please visit my repo here for step-by-step videos - https://github.com/GHbret/Collibra-Videos/ **  
+> A step-by-step video showing how to register this dashboard as a DGC customisation and surface it as a native dashboard page is being published alongside this repository.
+> General import video - https://github.com/GHbret/Collibra-Videos/blob/main/Collibra%20Customization%20Import.mp4
+> Dashboard specific setup video - TBD
 
 The recommended way to deploy this dashboard is as a **DGC customisation** embedded directly in your Collibra environment. This approach gives users a native experience — the dashboard appears as a proper page within Collibra, inherits the active session automatically with no CORS configuration required, and can be surfaced on a home page or community dashboard for broad access without requiring anyone to manage a separate file.
 
